@@ -175,3 +175,4 @@ cython_debug/
 # PyPI configuration file
 .pypirc
 proxy/src/secrets.py
+database-server/esp_now_received.db

@@ -3,9 +3,11 @@ name = "data-receiver"
 version = "0.1.0"
 requires-python = ">=3.9"
 dependencies = [
+    "chardet>=5.2.0",
     "duckdb>=1.2.2",
     "flask>=3.1.0",
     "ipython>=8.18.1",
     "peewee>=3.18.1",
+    "playhouse>=0.1.0",
     "psycopg2>=2.9.10",
 ]

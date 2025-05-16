@@ -1,24 +1,27 @@
 import json
-import requests
-from proxy import sender, rssi, timestamp, msg, URL
+import urequests
 
-URL = const("http://10.0.0.47:5000/sensor-data")
+URL = const("http://10.0.0.14:5000/data")
 
-def send(host, rssi, timestamp, msg):
+
+def send(host, rssi, timestamp, package_delay_ms, msg):
     data = dict(
-        host=host.hex(),
+        mac=host.hex(),
         rssi=rssi,
-        ts=timestamp,
-        data=msg.hex()
+        timestamp=timestamp,
+        package_delay_ms=package_delay_ms,
+        locality="Siemensstr. 4",
+        data=msg.hex(),
     )
-    response = requests.post(URL, json=json.dumps(data))
+    response = urequests.post(URL, json=json.dumps(data))
 
-    # Send the POST request
-
-    # Check if the request was successful
     if response.status_code == 200:
         print("Success!")
         print("Response:", response.json())
     else:
         print(f"Request failed with status code: {response.status_code}")
         print("Response:", response.text)
+
+
+def test_requests():
+    json = '{"mac_address": "AA:BB:CC:DD:EE:FF","rssi": -10,"data": "test curl"}'

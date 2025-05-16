@@ -1,12 +1,20 @@
 import network
 import espnow
 import time
+import machine
+import util
+from datetime import datetime, timedelta
 from micropython import const
+import post
 
 from secrets import WIFI_SSID, WIFI_PASSWORD
 
 TIMEOUT = const(100)
 ACK = const(True)
+
+rtc = machine.RTC()
+
+util.wifi_reset()
 
 # Connect to the internet
 sta = network.WLAN(network.WLAN.IF_STA)
@@ -27,13 +35,22 @@ now.active(True)
 while True:
     # pull next package from buffer queue
     # (or wait up to TIMEOUT for a new package if the queue is empty)
+    machine.idle()
     sender, msg = now.recv(TIMEOUT)
     # sender: mac address of sender
     if msg:
         # RSSI: Signal strength in dBm
         # timestamp: local clock, package arrival time in ms since boot
         rssi, timestamp = now.peers_table[sender]
-        print(sender, rssi, msg)
+
+        time_since_package = time.ticks_diff(time.ticks_ms(), timestamp)
+
+        try:
+            post.send(sender, rssi, rtc.datetime(), time_since_package, msg)
+            raise
+        except:
+            raise
+
         if ACK:
             try:
                 # to send messages to a specific address, we need to add it to the
@@ -43,4 +60,4 @@ while True:
                 # XXX: a bit hacky, add_peer raises an exception if the peer is already registered
                 pass
             # Don't sync, we don't want to wait for a response
-            now.send(mac=sender, msg="ACK", sync=False)
+            now.send(sender, "ACK", False)

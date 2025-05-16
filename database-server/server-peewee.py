@@ -1,8 +1,10 @@
 import ast
 import base64
+import ast
 import datetime
 import os
 import uuid
+import json
 import chardet
 from flask import Flask, request, jsonify
 from peewee import (
@@ -66,10 +68,11 @@ class RawPackage(BaseModel):
 class FallbackRecord(BaseModel):
     uuid = UUIDField(primary_key=True, default=uuid.uuid4)
     created_at = DateTimeField(constraints=[SQL("DEFAULT CURRENT_TIMESTAMP")])
-    raw_data = BlobField()
+    raw_data = BlobField(null=True)
+    raw_text = TextField(null=True)
     encoding = CharField(null=True)
     confidence = FloatField(null=True)
-    error_message = TextField()
+    error_message = TextField(null=True)
 
 
 class Package(BaseModel):
@@ -111,8 +114,14 @@ def log_and_save_fallback(error, status_code=400):
     detected = chardet.detect(raw_bytes)
 
     try:
+        raw_text = request.get_json(force=True)
+    except:
+        raw_text = None
+
+    try:
         FallbackRecord.create(
             raw_data=raw_bytes,
+            raw_text=raw_text,
             encoding=detected["encoding"],
             confidence=detected["confidence"],
             error_message=str(error),
@@ -145,6 +154,7 @@ def store_data():
             processed_data = process_value(raw_data)
             data_record = RawPackage.create(data=processed_data)
 
+            raw_data = json.loads(raw_data)
             # Extract fields for processed record
             timestamp = raw_data.get("timestamp")
             mac = raw_data.get("mac")
@@ -155,13 +165,23 @@ def store_data():
             remaining_data.pop("mac", None)
             remaining_data.pop("rssi", None)
 
+            try:
+                print("a", timestamp)
+                t = ast.literal_eval(timestamp)
+                print("b", timestamp)
+                t = *t[:3],*t[4:] # esp timestamp contains weekday
+                print("c", timestamp)
+                timestamp=datetime.datetime(*t)
+                print("d", timestamp)
+            except ValueError:
+                timestamp = None
+            
+
             # Validate and create processed record
             try:
                 Package.create(
                     data_record=data_record,
-                    timestamp=datetime.datetime.fromisoformat(timestamp)
-                    if timestamp
-                    else None,
+                    timestamp=timestamp,
                     mac=mac,
                     rssi=rssi,
                     remaining_data=remaining_data,
